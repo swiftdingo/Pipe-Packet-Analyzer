@@ -5,18 +5,7 @@
 	
 int main(int argc, char *argv[]) {
 	
-	/*HANDLE serverPipe = CreateNamedPipe(
-    L"\\\\.\\pipe\\mojo.external_task_manager_8396",	// name of our pipe, must be in the form of \\.\pipe\<NAME>
-    PIPE_ACCESS_DUPLEX, // open mode, specifying a duplex pipe so server and client can send and receive data
-    PIPE_TYPE_MESSAGE,	// MESSAGE mode to send/receive messages in discrete units (instead of a byte stream)
-    1,			// number of instanced for this pipe, 1 is enough for our use case
-    2048,		// output buffer size
-    2048,		// input buffer size
-    0,			// default timeout value, equal to 50 milliseconds
-    NULL		// use default security attributes
-	);*/
-	
-	HANDLE hFile;
+	HANDLE hFile, serverPipe;
 	CHAR Buf[MAXSIZE] = {0};
 	DWORD nIn = 0;
 	CHAR msg[MAXSIZE] = {0};
@@ -24,45 +13,59 @@ int main(int argc, char *argv[]) {
 	
 	hFile = CreateFileA("\\\\.\\Pipe\\slobs", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
 	
-	if (hFile == INVALID_HANDLE_VALUE)
+	if (hFile != INVALID_HANDLE_VALUE)
 	{
-		printf("\n File open error\n");
+		printf("File open\n");
+		
 	}
+		
+	WriteFile(hFile, argv[1], sizeof(msg), &bytesWritten, NULL);
 	
-	// write the first variable as a message to the 
-	//msg = argv[0];
-	
-	WriteFile(hFile, argv[0], sizeof(msg), &bytesWritten, NULL);
-	
-	if (ReadFile(hFile, Buf, MAXSIZE - 2, &nIn, NULL) == FALSE)
+	if(ReadFile(hFile, Buf, MAXSIZE - 2, &nIn, NULL) == FALSE)
 	{
 		printf("Unable to read file.\n");
 		CloseHandle(hFile);
 		return 0;
 	}
-	else
-		while(1)
+	
+	if(nIn > 0 && nIn < MAXSIZE - 2)
 		{
-			if(nIn > 0 && nIn < MAXSIZE - 2)
-			{
-				printf("[+] %d bytes read from BUF\n", nIn);  
-				printf("%s", &Buf);
-			}
-			else if (nIn == 0)
-			{
-				printf("No data to read from BUF\n");
-			}
-			
-			
-			// get users input data to write to the pipe
-			scanf("[+] DATA to write: %s", &msg);
-			
-			WriteFile(hFile, msg, sizeof(msg), &bytesWritten, NULL);
+			printf("[+] %d bytes read from BUF\n", nIn);  
+			printf("%s", &Buf);
 			
 		}
-			
-	CloseHandle(hFile);
+		else
+			printf("No data to read from BUF\n");
 	
+	while(1)
+	{
+		//you have to keep calling the file if you want to open it 
+		hFile = CreateFileA("\\\\.\\Pipe\\slobs", GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+		
+		printf("[+] payload = ");
+		scanf("%s", &msg);
+		printf("\n");
+		printf("sending %s\n", msg);
+		
+		WriteFile(hFile, msg, sizeof(msg), &bytesWritten, NULL);
+		
+		printf("[+] reading file...\n");
+		ReadFile(hFile, Buf, MAXSIZE - 2, &nIn, NULL);
+		
+		if(nIn > 0 && nIn < MAXSIZE - 2)
+		{
+			printf("[+] %d bytes read from BUF\n", nIn);  
+			printf("%s", &Buf);
+			
+		}
+		else
+			printf("No data to read from BUF\n");
+		
+		Sleep(1000);
+		nIn = 0;
+	}
+					
+	CloseHandle(hFile);
 	return 0;
 	
 }
